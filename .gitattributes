@@ -1,0 +1,3 @@
+# Linux runner bash betiklerini CRLF ile calistirmasin
+* text=auto eol=lf
+*.html -text

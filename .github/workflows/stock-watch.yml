@@ -1,0 +1,71 @@
+name: Scott stok takibi
+
+on:
+  schedule:
+    # Her 20 dakikada bir. GitHub zamanlanmis islerde birkac dakika gecikebilir.
+    - cron: "*/20 * * * *"
+  workflow_dispatch:        # Actions sekmesinden elle calistirmak icin
+
+concurrency:
+  # Bir kontrol uzarsa ikincisi ust uste binmesin; durum dosyasi bozulmasin.
+  group: stock-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Durum (stok gecmisi + Incapsula cerezleri) cache'te tasinir.
+      # Repo'ya commit atmak her 20 dakikada bir commit uretirdi.
+      - name: Onceki durumu geri yukle
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: stock-state-${{ github.run_id }}
+          restore-keys: |
+            stock-state-
+
+      - name: Stok kontrolu
+        id: check
+        # Site gecici olarak engellerse is kirmizi olmasin: betik ust uste
+        # hata birikince zaten ntfy uzerinden uyari yolluyor.
+        continue-on-error: true
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
+          WATCH_SIZES: ${{ vars.WATCH_SIZES || 'XS' }}
+          PRODUCT_PATH: ${{ vars.PRODUCT_PATH || '/de/de/product/scott-addict-gravel-20-frame-set' }}
+        run: python check_stock.py
+
+      # Betik cokerse dosya hic olusmamis olabilir; cache/save eksik yola hata verir.
+      - name: Durum dosyasini garantile
+        if: always()
+        run: test -f state.json || echo '{}' > state.json
+
+      - name: Durumu kaydet
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: stock-state-${{ github.run_id }}
+
+      - name: Ozet
+        if: always()
+        run: |
+          {
+            echo "### Sonuc: ${{ steps.check.outcome }}"
+            echo '```json'
+            cat state.json 2>/dev/null || echo '{}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

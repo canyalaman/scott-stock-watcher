@@ -1,0 +1,7 @@
+state.json
+__pycache__/
+*.pyc
+.venv/
+
+# Gercek ntfy konu adi: depo public, konunun gizli kalmasi gerekiyor
+topic.txt
