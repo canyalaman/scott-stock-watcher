@@ -2,8 +2,8 @@ name: Scott stok takibi
 
 on:
   schedule:
-    # Her 20 dakikada bir. GitHub zamanlanmis islerde birkac dakika gecikebilir.
-    - cron: "*/20 * * * *"
+    # Her 3 saatte bir (UTC). GitHub zamanlanmis islerde birkac dakika gecikebilir.
+    - cron: "0 */3 * * *"
   workflow_dispatch:        # Actions sekmesinden elle calistirmak icin
 
 concurrency:
@@ -27,7 +27,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       # Durum (stok gecmisi + Incapsula cerezleri) cache'te tasinir.
-      # Repo'ya commit atmak her 20 dakikada bir commit uretirdi.
+      # Repo'ya commit atmak her turda bir commit uretirdi.
       - name: Onceki durumu geri yukle
         uses: actions/cache/restore@v4
         with:
@@ -46,6 +46,7 @@ jobs:
           NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
           WATCH_SIZES: ${{ vars.WATCH_SIZES || 'XS' }}
           PRODUCT_PATH: ${{ vars.PRODUCT_PATH || '/de/de/product/scott-addict-gravel-20-frame-set' }}
+          NOTIFY_OUT_OF_STOCK: ${{ vars.NOTIFY_OUT_OF_STOCK || '1' }}
         run: python check_stock.py
 
       # Betik cokerse dosya hic olusmamis olabilir; cache/save eksik yola hata verir.

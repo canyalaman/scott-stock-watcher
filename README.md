@@ -2,6 +2,8 @@
 
 [Scott Addict Gravel 20 Frame Set](https://www.scott-sports.com/de/de/product/scott-addict-gravel-20-frame-set?article=4277387969004)
 sayfasındaki **XS** bedeni izler; stoğa girdiği anda telefona push bildirimi yollar.
+Stok yokken de her turda sessiz bir "hâlâ yok" bildirimi gönderir, böylece
+takibin çalıştığını görürsün.
 
 Bildirim kanalı [ntfy.sh](https://ntfy.sh) — kayıt, hesap ya da API anahtarı gerektirmez.
 Çalışma yeri GitHub Actions, yani bilgisayar kapalıyken de kontrol devam eder.
@@ -43,7 +45,7 @@ Invoke-RestMethod -Uri https://ntfy.sh/KONU-ADIN -Method Post -Body "test"
 ## 2. GitHub'a kur
 
 **Depo `public`.** Zamanlanmış işler private depolarda aylık 2000 dakikalık
-ücretsiz kotadan yer; 20 dakikada bir çalışınca kota yetmez. Public depolarda
+ücretsiz kotadan yer. Public depolarda
 Actions dakikaları ücretsizdir. Bu yüzden repoya konu adı hiç girmiyor: gerçek ad
 sadece GitHub secret'ında ve yerel `topic.txt`'te duruyor. `state.json` da
 Actions cache'inde tutulur, repoya yazılmaz.
@@ -81,6 +83,8 @@ Depo ayarlarından (**Settings → Secrets and variables → Actions**) değişt
 | `NTFY_SERVER` | variable | `https://ntfy.sh` | Kendi ntfy sunucun varsa |
 | `WATCH_SIZES` | variable | `XS` | Virgülle birden fazla: `XS,S` |
 | `PRODUCT_PATH` | variable | `/de/de/product/scott-addict-gravel-20-frame-set` | Başka bir ürünü izlemek için |
+| `NOTIFY_OUT_OF_STOCK` | variable | `1` | Stok yokken de bildirim. Susturmak için `0` |
+| `REMIND_AFTER_HOURS` | variable | `8` | Stokta kalırsa kaç saatte bir hatırlatsın |
 
 Kontrol sıklığı `.github/workflows/stock-watch.yml` içindeki `cron` satırındadır.
 
@@ -128,7 +132,7 @@ python tests/test_parse.py
 Geliştirme sırasında ölçülen davranış: kısa sürede ~15 istek atınca Imperva IP'yi
 **tüm alan adı için 25 dakikadan uzun süre** engelliyor (`/de/de` de `/us/en` de).
 Engel sırasında ısrar etmek pencereyi besleyip süreyi uzatıyor; farklı TLS
-profillerine geçmek de kurtarmıyor — engel IP seviyesinde. 20 dakikada bir tek
+profillerine geçmek de kurtarmıyor — engel IP seviyesinde. 3 saatte bir tek
 istek bu eşiğin çok altında kalıyor.
 
 Bu yüzden betik normal koşulda **kontrol başına tek istek** atar:
@@ -139,7 +143,7 @@ Bu yüzden betik normal koşulda **kontrol başına tek istek** atar:
   önbellek doğrulaması aynı istekten yapılır.
 
 Engele takılırsa **en fazla bir kez daha** dener (30 sn sonra, sıfırdan ısınarak)
-ve pes eder — toplam en fazla üç istek. Israr etmek yerine 20 dakika sonraki cron
+ve pes eder — toplam en fazla üç istek. Israr etmek yerine bir sonraki cron
 turunu beklemek daha hızlı toparlıyor.
 
 ### Bildirim davranışı
@@ -147,6 +151,10 @@ turunu beklemek daha hızlı toparlıyor.
 - **Stoğa girişte** (`yok → var` geçişi) `urgent` öncelikli bildirim, ürün linki tıklanabilir.
 - Stokta kalmaya devam ederse **8 saatte bir** hatırlatma (`REMIND_AFTER_HOURS`).
 - Stoktan çıkarsa durum sıfırlanır; tekrar girerse yeniden bildirilir.
+- **Stok yokken her turda** `low` öncelikli "hâlâ yok" bildirimi. Telefonu
+  titretmez, ses çıkarmaz; sadece bildirim listesinde görünür. Amacı haber vermek
+  değil, takibin yaşadığını göstermek. Susturmak için `NOTIFY_OUT_OF_STOCK=0`.
+  3 saatlik periyotta günde 8 bildirim eder.
 - **4 kez üst üste** kontrol başarısız olursa düşük öncelikli "takip çalışmıyor"
   uyarısı gelir (günde en fazla bir kez). Sessiz bozulmaya karşı sigorta.
 
@@ -165,7 +173,7 @@ uyarır) alternatif, aynı betiği kendi bilgisayarında Görev Zamanlayıcı il
 çalıştırmak:
 
 ```powershell
-schtasks /create /tn "Scott stok takibi" /sc minute /mo 20 /f `
+schtasks /create /tn "Scott stok takibi" /sc hourly /mo 3 /f `
   /tr "cmd /c cd /d C:\yol\scott-stock-watcher && set NTFY_TOPIC=KONU-ADIN && python check_stock.py >> log.txt 2>&1"
 ```
 

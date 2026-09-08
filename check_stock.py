@@ -46,6 +46,11 @@ STATE_FILE = Path(os.getenv("STATE_FILE", "state.json"))
 
 # Stokta kaldigi surece kac saatte bir hatirlatma yollansin
 REMIND_AFTER_HOURS = float(os.getenv("REMIND_AFTER_HOURS", "8"))
+
+# Stok yokken de her turda "hala yok" bildirimi yollansin mi.
+# Acikken takibin yasadigini gormeyi saglar; kapatmak icin repo degiskenine 0 yaz.
+NOTIFY_OUT_OF_STOCK = os.getenv("NOTIFY_OUT_OF_STOCK", "1").strip().lower() \
+    not in ("0", "false", "no", "hayir", "")
 # Kac ardisik hatadan sonra "takip bozuldu" uyarisi gitsin
 ERROR_ALERT_AFTER = int(os.getenv("ERROR_ALERT_AFTER", "4"))
 
@@ -318,7 +323,7 @@ def check_sizes(state: dict) -> dict:
     Daha fazlasi denenmiyor. Imperva engeli 25+ dakika surdugu icin ayni
     calisma icinde israr etmenin faydasi yok; dahasi engel sirasinda gelen
     istekler pencereyi besleyip sureyi uzatiyor. Engellenirsek sessizce
-    pes edip 20 dakika sonraki cron turunu beklemek daha hizli toparliyor.
+    pes edip bir sonraki cron turunu beklemek daha hizli toparliyor.
     """
     variants = dict(state.get("variants") or {})
     cookies = state.get("cookies") or {}
@@ -406,6 +411,18 @@ def main() -> int:
                     entry["last_notified"] = iso(now())
         else:
             entry["last_notified"] = None       # tekrar girerse yeniden bildirilsin
+            if NOTIFY_OUT_OF_STOCK:
+                # Dusuk oncelik: telefonu titretmez/ses cikarmaz, bildirim
+                # listesinde gorunur. Amaci haber vermek degil, takibin
+                # calistigini gostermek.
+                notify(
+                    "Scott " + size + ": stokta yok",
+                    "Addict Gravel 20 Frame Set - beden " + size
+                    + " hala stokta degil.\n\n" + url,
+                    priority="low",
+                    tags="heavy_multiplication_x",
+                    click=url,
+                )
 
         state["sizes"][size] = entry
 
