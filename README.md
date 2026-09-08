@@ -128,7 +128,8 @@ python tests/test_parse.py
 Geliştirme sırasında ölçülen davranış: kısa sürede ~15 istek atınca Imperva IP'yi
 **tüm alan adı için 25 dakikadan uzun süre** engelliyor (`/de/de` de `/us/en` de).
 Engel sırasında ısrar etmek pencereyi besleyip süreyi uzatıyor; farklı TLS
-profillerine geçmek de kurtarmıyor — engel IP seviyesinde.
+profillerine geçmek de kurtarmıyor — engel IP seviyesinde. 20 dakikada bir tek
+istek bu eşiğin çok altında kalıyor.
 
 Bu yüzden betik normal koşulda **kontrol başına tek istek** atar:
 
@@ -153,17 +154,15 @@ turunu beklemek daha hızlı toparlıyor.
 
 ## Bilinen riskler
 
-**IP engeli — en büyük risk, henüz tam doğrulanmadı.** Yöntem (TLS parmak izi +
-ısınma isteği) ev bağlantısından çalışırken doğrulandı: ürün sayfası geldi, yedi
-bedenin stok durumu okundu. Ancak geliştirme testleri sırasında atılan istek yığını
-IP'yi 25+ dakika engelledi ve engel kalkmadan **20 dakikalık gerçek periyodu
-uçtan uca doğrulayamadım**. 20 dakikada bir tek istek yığın sayılmamalı, ama bunu
-ilk günün logları gösterecek.
+**IP engeli.** Bu, kurulumun en büyük bilinmeyeniydi: Imperva bulut sağlayıcı IP
+aralıklarına ev bağlantılarından daha sert davranır ve GitHub Actions runner'ları
+Azure'da çalışır. **İlk gerçek çalıştırmada doğrulandı — Azure IP'leri geçiyor:**
+ürün sayfası geldi, XS okundu, çerezler ve yedi varyant kodu önbelleğe alındı.
 
-Ayrıca Imperva bulut sağlayıcı IP aralıklarına ev bağlantılarından daha sert
-davranır; GitHub Actions runner'ları Azure'da çalışır. İlk gün logları kontrol et:
-her çalışma `bot korumasi` hatası veriyorsa alternatif, aynı betiği kendi
-bilgisayarında Görev Zamanlayıcı ile çalıştırmak:
+Yine de kalıcı bir garanti değil; Imperva IP itibar listelerini güncelleyebilir.
+Loglarda üst üste `bot korumasi` görürsen (betik zaten 4 hatadan sonra ntfy'den
+uyarır) alternatif, aynı betiği kendi bilgisayarında Görev Zamanlayıcı ile
+çalıştırmak:
 
 ```powershell
 schtasks /create /tn "Scott stok takibi" /sc minute /mo 20 /f `
